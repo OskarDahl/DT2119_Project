@@ -24,10 +24,10 @@ for root,_,files in os.walk(genre_dir):
 			target = genres.index(genre)
 			if int(idnr) in test_id_nr:
 				# place in test set
-				testset.append({'target':target, 'mfcc': mfcc})
+				testset.append({'target':target, 'mfcc': mfcc, 'id':idnr})
 			else:
 				# place in training set
-				trainset.append({'target':target, 'mfcc': mfcc})
+				trainset.append({'target':target, 'mfcc': mfcc, 'id':idnr})
 
 
 
