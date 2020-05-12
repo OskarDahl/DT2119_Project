@@ -28,6 +28,7 @@ def load_data(file_path, one_hot=False):
         targets = oh_targets
     else:
         targets = np.array(targets)
-    return np.stack(mfccs), targets
+    mfccs = np.stack(mfccs)
+    return mfccs, targets
 
 m.shape,t.shape
