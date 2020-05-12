@@ -30,5 +30,3 @@ def load_data(file_path, one_hot=False):
         targets = np.array(targets)
     mfccs = np.stack(mfccs)
     return mfccs, targets
-
-m.shape,t.shape
