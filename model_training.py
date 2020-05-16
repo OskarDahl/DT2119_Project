@@ -82,8 +82,10 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     from pathlib import Path
     Path(job_dir).mkdir(parents=True, exist_ok=True)
     #os.mkdir(job_dir)
+    callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
+    callbacks=[callback]
     
-    history = model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1)
+    history = model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1, callbacks=callbacks)
     print(history.history.keys())
     plt.plot(history.history['categorical_accuracy'])
     plt.plot(history.history['val_categorical_accuracy'])
@@ -155,7 +157,7 @@ def get_default_model():
 #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
 job_dir = "results/" + datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
 example_model = get_default_model()
-params = {"batch_size": 32, "epochs": 2}
+params = {"batch_size": 32, "epochs": 40}
 class_names = [i for i in "ABCDEFGHIJ"]
 result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
 print(result)
