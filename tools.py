@@ -13,14 +13,17 @@ def load_data(file_path, one_hot=False):
     data = data[key]
     mfccs = []
     targets = []
+    ids = []
     for item in data:
         target = item['target']
         mfcc = item['mfcc']
+        id = item['id']
         n_frames = mfcc.shape[1]
         idx = 0
         while(idx+190 < n_frames):
             targets.append(target)
             mfccs.append(mfcc[:,idx:idx+190])
+            ids.append(id)
             idx += 190
     if one_hot:
         oh_targets = np.zeros((len(targets), max(targets)+1))
@@ -29,4 +32,4 @@ def load_data(file_path, one_hot=False):
     else:
         targets = np.array(targets)
     mfccs = np.stack(mfccs)
-    return mfccs, targets
+    return mfccs, targets, ids
