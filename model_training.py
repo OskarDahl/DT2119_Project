@@ -79,8 +79,9 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     EPOCHS = hyperparams["epochs"]
     y_true_list = []
     y_pred_list = []
-    
-    os.mkdir(job_dir)
+    from pathlib import Path
+    Path(job_dir).mkdir(parents=True, exist_ok=True)
+    #os.mkdir(job_dir)
     
     history = model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1)
     print(history.history.keys())
