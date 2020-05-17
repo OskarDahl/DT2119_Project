@@ -1,5 +1,5 @@
 import numpy as np
-def load_data(file_path, one_hot=False):
+def load_data(file_path, one_hot=False, genres_to_include=None):
     '''
     Input
         filepath: path to a .npz file
@@ -8,6 +8,10 @@ def load_data(file_path, one_hot=False):
         mfccs: 13x190 mfcc maps
         targets: 0-9 genre target (or one-hot vectors)
     '''
+    
+    if genres_to_include is None:
+        genres_to_include = range(10)
+        
     data = np.load(file_path, allow_pickle=True)
     key = list(data.keys())[0]
     data = data[key]
@@ -15,16 +19,18 @@ def load_data(file_path, one_hot=False):
     targets = []
     ids = []
     for item in data:
+        
         target = item['target']
-        mfcc = item['mfcc']
-        id = item['id']
-        n_frames = mfcc.shape[1]
-        idx = 0
-        while(idx+190 < n_frames):
-            targets.append(target)
-            mfccs.append(mfcc[:,idx:idx+190])
-            ids.append(id)
-            idx += 190
+        if target in genres_to_include:
+            mfcc = item['mfcc']
+            id = item['id']
+            n_frames = mfcc.shape[1]
+            idx = 0
+            while(idx+190 < n_frames):
+                targets.append(target)
+                mfccs.append(mfcc[:,idx:idx+190])
+                ids.append(id)
+                idx += 190
     if one_hot:
         oh_targets = np.zeros((len(targets), max(targets)+1))
         oh_targets[np.arange(len(targets)),targets] = 1
