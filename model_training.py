@@ -99,8 +99,7 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     EPOCHS = hyperparams["epochs"]
     y_true_list = []
     y_pred_list = []
-    from pathlib import Path
-    Path(job_dir).mkdir(parents=True, exist_ok=True)
+    
     #os.mkdir(job_dir)
     callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=50, restore_best_weights=True)
     callbacks=[callback]
@@ -114,7 +113,7 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     plt.title('model accuracy')
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left')
+    plt.legend(['train', 'val'], loc='upper left',prop={'size': 6})
     plt.savefig(job_dir+"_training_accs")
     plt.clf()
     print("X_test shape {}".format(X_test.shape))
@@ -149,7 +148,7 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     plt.clf()
     return [1-x for x in history.history['categorical_accuracy']]
 
-def get_default_model(nr_targets, use_dropout=False):
+def get_default_model(nr_targets, use_dropout=False, dropout=0):
     model = tf.keras.models.Sequential()
 
     #model.add(tf.keras.layers.InputLayer(input_shape=(1,13,190)))
@@ -157,20 +156,21 @@ def get_default_model(nr_targets, use_dropout=False):
     NR_FILTERS_2 = 15
     NR_FILTERS_3 = 65
 
-    KERNEL_SIZE_1 = (46,1)
-    KERNEL_SIZE_2 = (10,1)
-    KERNEL_SIZE_3 = (1,1)
+    KERNEL_SIZE_1 = (13,10)
+    KERNEL_SIZE_2 = (1,10)
+    KERNEL_SIZE_3 = (1,10)
 
-    model.add(tf.keras.layers.Conv2D(NR_FILTERS_1, KERNEL_SIZE_1, strides=(1,4), padding = "same", input_shape=(13,190,1)))
-    model.add(tf.keras.layers.Activation("elu"))
-    model.add(tf.keras.layers.Conv2D(NR_FILTERS_2, KERNEL_SIZE_2, strides=(1,4), padding = "same"))
-    model.add(tf.keras.layers.Activation("elu"))
-    model.add(tf.keras.layers.Conv2D(NR_FILTERS_3, KERNEL_SIZE_3, strides=(1,4),padding = "same"))
-    model.add(tf.keras.layers.Activation("elu"))
+    model.add(tf.keras.layers.Conv2D(NR_FILTERS_1, KERNEL_SIZE_1, strides=(1,4), padding = "valid", input_shape=(13,190,1)))
+    model.add(tf.keras.layers.Activation("sigmoid"))
+    model.add(tf.keras.layers.Conv2D(NR_FILTERS_2, KERNEL_SIZE_2, strides=(1,4), padding = "valid"))
+    model.add(tf.keras.layers.Activation("sigmoid"))
+    model.add(tf.keras.layers.Conv2D(NR_FILTERS_3, KERNEL_SIZE_3, strides=(1,4),padding = "valid"))
+    model.add(tf.keras.layers.Activation("sigmoid"))
     model.add(tf.keras.layers.Flatten())
-    model.add(tf.keras.layers.Dense(nr_targets))
+    
     if use_dropout:
-        model.add(tf.keras.layers.Dropout(0.2))
+        model.add(tf.keras.layers.Dropout(dropout))
+    model.add(tf.keras.layers.Dense(nr_targets))
     model.add(tf.keras.layers.Softmax())
 
     loss = tf.keras.losses.CategoricalCrossentropy()
@@ -179,31 +179,35 @@ def get_default_model(nr_targets, use_dropout=False):
     model.summary()
     return model
 
-USE_DROPOUT = False
-droptout_string = "with_dropout" if USE_DROPOUT else "without_drop"
+dropout_list = [0,0.2,0.4,0.6,0.8]
+current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+from pathlib import Path
+Path("results/{}".format(current_date_time)).mkdir(parents=True, exist_ok=True)
+for dropout in dropout_list:
+    USE_DROPOUT = True
 
-current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")+ droptout_string
-genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0]]
-#genres_to_test = [ list(range(10))]
-#genres_to_test = [list(range(10))]
-
-training_errors = {}
-for genres_to_include in genres_to_test:
     
-    X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict = import_and_filter(train_path, test_path, genres_to_include)
-    #print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
-    #print("y_test again {}".format(len(y_test)))
-    #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
-    job_dir = "results/{}/{}_genres".format(current_date_time, len(genres_to_include))
-    example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=USE_DROPOUT)
-    params = {"batch_size": 32, "epochs": 200}
-    class_names = list(np.array(GENRE_LIST)[genres_to_include])
-    result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
-    training_errors[len(genres_to_include)] = result
+    genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0]]
+    genres_to_test = [list(range(10))]
 
-for key, vals in training_errors.items():
-    plt.plot(vals)
-plt.legend(["nr genres: {}".format(len(k)) for k in genres_to_test])
-plt.title("training error")
-plt.savefig("results/{}/training_errors".format(current_date_time))
-plt.clf()
+    training_errors = {}
+    for genres_to_include in genres_to_test:
+    
+        X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict = import_and_filter(train_path, test_path, genres_to_include)
+        #print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
+        #print("y_test again {}".format(len(y_test)))
+        #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
+        job_dir = "results/{}/{}_dropout_{}_genres".format(current_date_time,str(dropout)[-1], len(genres_to_include))
+        example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=USE_DROPOUT)
+        params = {"batch_size": 32, "epochs": 50}
+        class_names = list(np.array(GENRE_LIST)[genres_to_include])
+        print("xtrain shape",X_train.shape)
+        result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
+        training_errors[len(genres_to_include)] = result
+
+    for key, vals in training_errors.items():
+        plt.plot(vals)
+    plt.legend(["nr genres: {}".format(len(k)) for k in genres_to_test])
+    plt.title("training error")
+    plt.savefig("results/{}/{}_dropout_training_errors".format(current_date_time,str(dropout)[-1]))
+    plt.clf()
