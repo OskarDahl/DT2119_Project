@@ -43,7 +43,7 @@ def import_and_filter(train_path, test_path, genres_to_include):
     ids_test=np.array(ids_test)
 
     ids_unique = list(set(ids))
-    print("ids unique {}".format(ids_unique))
+    #print("ids unique {}".format(ids_unique))
     ids_train, ids_val = train_test_split(ids_unique, test_size=0.1)
 
     X_train = []
@@ -115,7 +115,7 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     plt.ylabel('accuracy')
     plt.xlabel('epoch')
     plt.legend(['train', 'val'], loc='upper left')
-    plt.savefig(job_dir+"/training_accs")
+    plt.savefig(job_dir+"_training_accs")
     plt.clf()
     print("X_test shape {}".format(X_test.shape))
     y_pred = model.predict(X_test)
@@ -145,7 +145,7 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     sn.heatmap(df_cm, annot=True, cmap = "Blues")
     plt.xlabel("True labels")
     plt.ylabel("Predicted labels")
-    plt.savefig(job_dir+"/conf_matrix")
+    plt.savefig(job_dir+"_conf_matrix")
     plt.clf()
     return [1-x for x in history.history['categorical_accuracy']]
 
@@ -162,8 +162,11 @@ def get_default_model(nr_targets, use_dropout=False):
     KERNEL_SIZE_3 = (1,1)
 
     model.add(tf.keras.layers.Conv2D(NR_FILTERS_1, KERNEL_SIZE_1, strides=(1,4), padding = "same", input_shape=(13,190,1)))
+    model.add(tf.keras.layers.Activation("elu"))
     model.add(tf.keras.layers.Conv2D(NR_FILTERS_2, KERNEL_SIZE_2, strides=(1,4), padding = "same"))
+    model.add(tf.keras.layers.Activation("elu"))
     model.add(tf.keras.layers.Conv2D(NR_FILTERS_3, KERNEL_SIZE_3, strides=(1,4),padding = "same"))
+    model.add(tf.keras.layers.Activation("elu"))
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(nr_targets))
     if use_dropout:
@@ -176,22 +179,23 @@ def get_default_model(nr_targets, use_dropout=False):
     model.summary()
     return model
 
-use_dropout = True
-droptout_string = "with_dropout" if use_dropout else "without_drop"
+USE_DROPOUT = False
+droptout_string = "with_dropout" if USE_DROPOUT else "without_drop"
 
 current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")+ droptout_string
-genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0], list(range(10))]
+genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0]]
+#genres_to_test = [ list(range(10))]
 #genres_to_test = [list(range(10))]
 
 training_errors = {}
 for genres_to_include in genres_to_test:
     
     X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict = import_and_filter(train_path, test_path, genres_to_include)
-    print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
-    print("y_test again {}".format(len(y_test)))
+    #print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
+    #print("y_test again {}".format(len(y_test)))
     #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
     job_dir = "results/{}/{}_genres".format(current_date_time, len(genres_to_include))
-    example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=use_dropout)
+    example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=USE_DROPOUT)
     params = {"batch_size": 32, "epochs": 200}
     class_names = list(np.array(GENRE_LIST)[genres_to_include])
     result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
@@ -201,5 +205,5 @@ for key, vals in training_errors.items():
     plt.plot(vals)
 plt.legend(["nr genres: {}".format(len(k)) for k in genres_to_test])
 plt.title("training error")
-plt.savefig("results/{}/training_losses".format(current_date_time))
+plt.savefig("results/{}/training_errors".format(current_date_time))
 plt.clf()

@@ -31,8 +31,8 @@ def load_data(file_path, one_hot=False, genres_to_include=None):
                 mfccs.append(mfcc[:,idx:idx+190])
                 ids.append(id)
                 idx += 190
-        else:
-            print("target: {} not in {}".format(target, genres_to_include))
+        #else:
+        #    print("target: {} not in {}".format(target, genres_to_include))
     if one_hot:
         oh_targets = np.zeros((len(targets), max(targets)+1))
         oh_targets[np.arange(len(targets)),targets] = 1
