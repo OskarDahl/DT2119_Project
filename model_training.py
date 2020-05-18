@@ -33,6 +33,7 @@ def import_and_filter(train_path, test_path, genres_to_include):
     y= tf.one_hot(y, max(y)+1)
     X_test, y_test, ids_test = tools.load_data(test_path, one_hot=False, genres_to_include=genres_to_include)
     #print("y before{}".format(y_test))
+    
     y_test= [class_to_index_dict[i] for i in y_test]
     #print("y after{}".format(y_test))
     y_test= tf.one_hot(y_test, max(y_test)+1)
@@ -42,7 +43,7 @@ def import_and_filter(train_path, test_path, genres_to_include):
     ids_test=np.array(ids_test)
 
     ids_unique = list(set(ids))
-    print(ids_unique)
+    print("ids unique {}".format(ids_unique))
     ids_train, ids_val = train_test_split(ids_unique, test_size=0.1)
 
     X_train = []
@@ -90,6 +91,7 @@ def import_and_filter(train_path, test_path, genres_to_include):
     assert set(ids_train_list).intersection(set(ids_val_list)) == set()
     print("intersection {}".format(set(ids_train_list).intersection(set(ids_val_list))))
     #print(list(set(ids_val_list)))
+    print("ytest returned: {}".format(len(y_test)))
     return X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict
 
 def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, ids_val, X_test, y_test,ids_test, hyperparams, class_names):
@@ -103,7 +105,8 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=50, restore_best_weights=True)
     callbacks=[callback]
     callbacks=[]
-    
+    #print("test_y {}".format(len()))
+
     history = model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1, callbacks=callbacks)
     print(history.history.keys())
     plt.plot(history.history['categorical_accuracy'])
@@ -115,9 +118,7 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     plt.savefig(job_dir+"/training_accs")
     plt.clf()
     print("X_test shape {}".format(X_test.shape))
-
     y_pred = model.predict(X_test)
-    
     for test_id in list(set(ids_test)):
         #print(test_id)
         y_maj_vote = np.zeros(y_train[0].shape)
@@ -175,18 +176,22 @@ def get_default_model(nr_targets, use_dropout=False):
     model.summary()
     return model
 
+use_dropout = True
+droptout_string = "with_dropout" if use_dropout else "without_drop"
 
-current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S_no_dropout")
+current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")+ droptout_string
 genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0], list(range(10))]
+#genres_to_test = [list(range(10))]
+
 training_errors = {}
 for genres_to_include in genres_to_test:
-
+    
     X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict = import_and_filter(train_path, test_path, genres_to_include)
     print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
-
+    print("y_test again {}".format(len(y_test)))
     #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
     job_dir = "results/{}/{}_genres".format(current_date_time, len(genres_to_include))
-    example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=False)
+    example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=use_dropout)
     params = {"batch_size": 32, "epochs": 200}
     class_names = list(np.array(GENRE_LIST)[genres_to_include])
     result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)

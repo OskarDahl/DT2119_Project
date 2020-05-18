@@ -23,7 +23,7 @@ def load_data(file_path, one_hot=False, genres_to_include=None):
         target = item['target']
         if target in genres_to_include:
             mfcc = item['mfcc']
-            id = item['id']
+            id = str(target)+item['id']
             n_frames = mfcc.shape[1]
             idx = 0
             while(idx+190 < n_frames):
@@ -31,6 +31,8 @@ def load_data(file_path, one_hot=False, genres_to_include=None):
                 mfccs.append(mfcc[:,idx:idx+190])
                 ids.append(id)
                 idx += 190
+        else:
+            print("target: {} not in {}".format(target, genres_to_include))
     if one_hot:
         oh_targets = np.zeros((len(targets), max(targets)+1))
         oh_targets[np.arange(len(targets)),targets] = 1
@@ -38,4 +40,6 @@ def load_data(file_path, one_hot=False, genres_to_include=None):
     else:
         targets = np.array(targets)
     mfccs = np.stack(mfccs)
+    print("nr of test ids: {}".format(len(list(set(ids)))))
+
     return mfccs, targets, ids
