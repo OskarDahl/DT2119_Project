@@ -100,8 +100,9 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     from pathlib import Path
     Path(job_dir).mkdir(parents=True, exist_ok=True)
     #os.mkdir(job_dir)
-    callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=10, restore_best_weights=True)
+    callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=50, restore_best_weights=True)
     callbacks=[callback]
+    callbacks=[]
     
     history = model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1, callbacks=callbacks)
     print(history.history.keys())
@@ -145,9 +146,9 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     plt.ylabel("Predicted labels")
     plt.savefig(job_dir+"/conf_matrix")
     plt.clf()
-    return y_pred_list, y_true_list
+    return [1-x for x in history.history['categorical_accuracy']]
 
-def get_default_model(nr_targets):
+def get_default_model(nr_targets, use_dropout=False):
     model = tf.keras.models.Sequential()
 
     #model.add(tf.keras.layers.InputLayer(input_shape=(1,13,190)))
@@ -164,6 +165,8 @@ def get_default_model(nr_targets):
     model.add(tf.keras.layers.Conv2D(NR_FILTERS_3, KERNEL_SIZE_3, strides=(1,4),padding = "same"))
     model.add(tf.keras.layers.Flatten())
     model.add(tf.keras.layers.Dense(nr_targets))
+    if use_dropout:
+        model.add(tf.keras.layers.Dropout(0.2))
     model.add(tf.keras.layers.Softmax())
 
     loss = tf.keras.losses.CategoricalCrossentropy()
@@ -172,24 +175,26 @@ def get_default_model(nr_targets):
     model.summary()
     return model
 
-genres_to_include= range(10)
 
+current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S_no_dropout")
+genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0], list(range(10))]
+training_errors = {}
+for genres_to_include in genres_to_test:
 
+    X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict = import_and_filter(train_path, test_path, genres_to_include)
+    print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
 
-X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, index_to_class_dict = import_and_filter(train_path, test_path, genres_to_include)
+    #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
+    job_dir = "results/{}/{}_genres".format(current_date_time, len(genres_to_include))
+    example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=False)
+    params = {"batch_size": 32, "epochs": 200}
+    class_names = list(np.array(GENRE_LIST)[genres_to_include])
+    result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
+    training_errors[len(genres_to_include)] = result
 
-print(X_train.shape, y_train.shape, X_val.shape, y_val.shape, X_test.shape, y_test.shape)
-
-#model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
-job_dir = "results/" + datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-example_model = get_default_model(nr_targets= len(genres_to_include))
-params = {"batch_size": 32, "epochs": 2}
-class_names = list(np.array(GENRE_LIST)[genres_to_include])
-result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
-print(result)
-#y_test_pred = model.predict(X_test)
-#y_test_pred = tf.math.argmax(y_test_pred, axis=1)
-#y_test=tf.math.argmax(y_test, axis=1)
-#tf.metrics.accuracy(y_test_pred,y_test)
-y_train.shape
-
+for key, vals in training_errors.items():
+    plt.plot(vals)
+plt.legend(["nr genres: {}".format(len(k)) for k in genres_to_test])
+plt.title("training error")
+plt.savefig("results/{}/training_losses".format(current_date_time))
+plt.clf()
