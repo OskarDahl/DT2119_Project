@@ -108,12 +108,15 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
 
     history = model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=BATCH_SIZE, epochs=EPOCHS, verbose=1, callbacks=callbacks)
     print(history.history.keys())
+    plt.figure()
     plt.plot(history.history['categorical_accuracy'])
     plt.plot(history.history['val_categorical_accuracy'])
-    plt.title('model accuracy')
-    plt.ylabel('accuracy')
-    plt.xlabel('epoch')
-    plt.legend(['train', 'val'], loc='upper left',prop={'size': 6})
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.title('model accuracy', size=18)
+    plt.ylabel('accuracy', size=16)
+    plt.xlabel('epoch', size=16)
+    plt.legend(['train', 'val'], loc='upper left',prop={'size': 16})
     plt.savefig(job_dir+"_training_accs")
     plt.clf()
     print("X_test shape {}".format(X_test.shape))
@@ -140,10 +143,13 @@ def run_experiment(model, job_dir, X_train, y_train, ids_train, X_val, y_val, id
     cm = confusion_matrix(y_pred_list, y_true_list)
     df_cm = pd.DataFrame(cm, index = class_names,
                   columns = class_names)
-    plt.figure(figsize = (10,7))
-    sn.heatmap(df_cm, annot=True, cmap = "Blues")
-    plt.xlabel("True labels")
-    plt.ylabel("Predicted labels")
+    plt.figure(figsize = (20,14))
+    sn.set(font_scale=2)
+    sn.heatmap(df_cm, annot=True, cmap = "Blues",annot_kws={"size": 42})
+    plt.xticks(fontsize=22)
+    plt.yticks(fontsize=22)
+    plt.xlabel("True labels", size=32)
+    plt.ylabel("Predicted labels", size=32)
     plt.savefig(job_dir+"_conf_matrix")
     plt.clf()
     return [1-x for x in history.history['categorical_accuracy']]
@@ -175,16 +181,17 @@ def get_default_model(nr_targets, use_dropout=False, dropout=0):
 
     loss = tf.keras.losses.CategoricalCrossentropy()
 
-    model.compile(optimizer="adam", loss=loss, metrics=[tf.keras.metrics.CategoricalAccuracy()])
+    model.compile(optimizer="SGD", loss=loss, metrics=[tf.keras.metrics.CategoricalAccuracy()])
     model.summary()
     return model
 
-dropout_list = [0,0.2,0.4,0.6,0.8]
+dropout_list = [0,0.2,0.5,0.8]
+dropout_list = [0]
 current_date_time = datetime.datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
 from pathlib import Path
 Path("results/{}".format(current_date_time)).mkdir(parents=True, exist_ok=True)
 for dropout in dropout_list:
-    USE_DROPOUT = True
+    USE_DROPOUT = False
 
     
     genres_to_test = [ [1,5,9], [1,5,9,3], [1,5,9,3,7], [1,5,9,3,7,0]]
@@ -199,15 +206,25 @@ for dropout in dropout_list:
         #model.fit(X_train, y_train, validation_data=(X_val,y_val), batch_size=32, epochs=10)
         job_dir = "results/{}/{}_dropout_{}_genres".format(current_date_time,str(dropout)[-1], len(genres_to_include))
         example_model = get_default_model(nr_targets= len(genres_to_include), use_dropout=USE_DROPOUT)
-        params = {"batch_size": 32, "epochs": 50}
+        params = {"batch_size": 32, "epochs": 200}
         class_names = list(np.array(GENRE_LIST)[genres_to_include])
         print("xtrain shape",X_train.shape)
         result = run_experiment(example_model, job_dir, X_train, y_train, ids_train_list, X_val, y_val, ids_val_list, X_test, y_test, ids_test, params, class_names)
         training_errors[len(genres_to_include)] = result
-
+    plt.figure()
     for key, vals in training_errors.items():
         plt.plot(vals)
-    plt.legend(["nr genres: {}".format(len(k)) for k in genres_to_test])
-    plt.title("training error")
+        
+    plt.xticks(fontsize=14)
+    plt.yticks(fontsize=14)
+    plt.title('model accuracy', size=18)
+    plt.ylabel('error rate', size=16)
+    plt.xlabel('epoch', size=16)
+
+        
+        
+    
+    plt.legend(["nr genres: {}".format(len(k)) for k in genres_to_test], prop={'size': 16})
+    plt.title("training error", size=18)
     plt.savefig("results/{}/{}_dropout_training_errors".format(current_date_time,str(dropout)[-1]))
     plt.clf()
